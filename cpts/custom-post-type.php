@@ -11,7 +11,7 @@ class TCP_CustomPostType {
     
     /* Create new custom post type with optional $args and $labels */
     public function __construct( $name, $args = array(), $labels = array() ) {
-        $this->slug = strtolower( str_replace( ' ', '_', $name ) );
+        $this->slug = slugify( $name );
         $this->args = $args;
         $this->labels = $labels;
         
@@ -66,7 +66,7 @@ class TCP_CustomPostType {
         $post_type_name = $this->slug;
 
         // Taxonomy properties
-        $taxonomy_name      = strtolower( str_replace( ' ', '_', $name ) );
+        $taxonomy_name      = slugify( $name );
         $taxonomy_labels    = $labels;
         $taxonomy_args      = $args;
 
@@ -128,7 +128,7 @@ class TCP_CustomPostType {
         $post_type_name = $this->slug;
 
         // Meta variables
-        $box_id         = strtolower( str_replace( ' ', '_', $title ) );
+        $box_id         = slugify( $title );
         $box_title      = $title;
         $box_context    = $context;
         $box_priority   = $priority;
@@ -138,39 +138,82 @@ class TCP_CustomPostType {
         $custom_fields[$title] = $fields;
         
         add_action( 'admin_init', function() use( $box_id, $box_title, $post_type_name, $box_context, $box_priority, $fields ) {
-            add_meta_box( $box_id, $box_title, function( $post, $data ) {
-                global $post;
-     
-                // Nonce field for some validation
-                wp_nonce_field( plugin_basename( __FILE__ ), 'custom_post_type' );
-     
-                // Get all inputs from $data
-                $custom_fields = $data['args'][0];
-     
-                // Get the saved values
-                $meta = get_post_custom( $post->ID );
-     
-                // Check the array and loop through it
-                if( ! empty( $custom_fields ) )
-                {
-                            /* Loop through $custom_fields */
-                            foreach( $custom_fields as $label => $type )
-                            {
-                                $field_id_name  = strtolower( str_replace( ' ', '_', $data['id'] ) ) . '_' . strtolower( str_replace( ' ', '_', $label ) );
-                     
-                                echo '<label for="' . $field_id_name . '">' . $label . '</label><input type="text" name="custom_meta[' . $field_id_name . ']" id="' . $field_id_name . '" value="' . $meta[$field_id_name][0] . '" />';
-                            }
-                        }
-         
-                    },
-                    $post_type_name,
-                    $box_context,
-                    $box_priority,
-                    array( $fields )
-                );
-            }
-        );
+            add_meta_box( $box_id, $box_title, array(&$this, 'custom_metabox' ), $post_type_name, $box_context, $box_priority, array( $fields ));
+        });
     }
+    
+    // Display custom metabox on custom post page
+    private function custom_metabox( $post, $data ) {
+        global $post;
+        
+        wp_nonce_field( plugin_basename( __FILE__ ), 'custom_post_type' );
+        
+        // All field arguments
+        $custom_fields = $data['args'][0];
+        
+        // Get previously saved values
+        $post_meta = get_post_custom( $post->ID );
+        
+        if( empty( $custom_fields ) ) {
+            //fail silently
+            return;
+        }    
+        foreach( $custom_fields as $label => $args ) {
+            $field_id_name  = slugify( $data['id'] )  . '_' . slugify( $label );
+            $field_type = !empty($args['type']) ? $args['type'] : 'text';
+            $field_val = $post_meta[$field_id_name][0];
+            
+            // Choose display based on field type
+            switch( $field_type ) {
+                // Basic text boxes
+                case 'text':
+                case 'number':
+                case 'email':
+                    printf( '<label for="%1$s">%2$s</label>', $field_id_name, $label );
+                    printf( '<input name="%1$s" id="%1$s" type="%2$s" placeholder="%3$s" value="%4$s" class="%5$s"/>', $field_id_name, $field_type, $args['placeholder'], esc_attr($field_val), $args['classes'] );
+                    break;
+                    
+                // Text areas
+                case 'textarea':
+                    printf( '<textarea name="%1$s" id="%1$s" placeholder="%2$s" rows="5" cols="50">%3$s</textarea>', $field_id_name, $args['placeholder'], esc_textarea($field_val) );
+                    break;
+                    
+                // Select boxes, require options array to display    
+                case 'select':
+                case 'multiselect':
+                    if ( empty( $args['options']) || ! is_array( $args['options']) ) {
+                        // Fail silently
+                        break;
+                    }
+                    $attributes = '';
+                    $options_markup = '';
+                    foreach( $args['options'] as $key => $option_label ){
+                        $options_markup .= sprintf( '<option value="%s" %s>%s</option>', $key, selected( $field_val, $key, false ), $option_label );
+                    }
+                    if( $arguments['type'] === 'multiselect' ){
+                        $attributes = ' multiple="multiple" ';
+                    }
+                    printf( '<select name="%1$s" id="%1$s" %2$s>%3$s</select>', $field_id_name, $attributes, $options_markup );
+                    break;
+                    
+                // Radio and checkbox
+                case 'radio':
+                case 'checkbox':
+                    if ( empty( $args['options']) || ! is_array( $args['options']) ) {
+                        // Fail silently
+                        break;
+                    }
+                    $options_markup = '';
+                    $iterator = 0;
+                    foreach( $args['options'] as $key => $option_label ){
+                        $iterator++;
+                        $options_markup .= sprintf( '<label for="%1$s_%6$s"><input id="%1$s_%6$s" name="%1$s[]" type="%2$s" value="%3$s" %4$s /> %5$s</label><br/>', $arguments['uid'], $arguments['type'], $key, checked( $value, $key, false ), $label, $iterator );
+                    }
+                    printf( '<fieldset>%s</fieldset>', $options_markup );
+                    break;
+            }
+        }
+    }        
     
     public function save() {
         // Need the post type name again
@@ -205,4 +248,8 @@ class TCP_CustomPostType {
             }
         );
     }
+}
+
+function slugify( $name_str ) {
+    return strtolower( str_replace( ' ', '_', $name_str ) );
 }
