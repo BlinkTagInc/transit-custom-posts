@@ -8,12 +8,14 @@ class TCP_CustomPostType {
     public $slug;
     public $args;
     public $labels;
+    public $fields;
     
     /* Create new custom post type with optional $args and $labels */
     public function __construct( $name, $args = array(), $labels = array() ) {
         $this->slug = slugify( $name );
         $this->args = $args;
         $this->labels = $labels;
+        $this->fields = array();
         
         if( ! post_type_exists( $this->slug ) ) {
             add_action( 'init', array(&$this, 'register_post_type' ) );
@@ -132,10 +134,20 @@ class TCP_CustomPostType {
         $box_title      = $title;
         $box_context    = $context;
         $box_priority   = $priority;
- 
-        // Make the fields global
-        global $custom_fields;
-        $custom_fields[$title] = $fields;
+        
+        foreach($fields as $label => $args) {
+            $fields[$label] = array_merge(array(
+                'placeholder'   => '',
+                'type'          => 'text',
+                'classes'       => 'widefat',
+                'helper'        => '',
+            ),
+            $args
+            );
+        }
+
+        // Save fields as part of post-type
+        $this->fields[$title] = $fields;
         
         add_action( 'admin_init', function() use( $box_id, $box_title, $post_type_name, $box_context, $box_priority, $fields ) {
             add_meta_box( $box_id, $box_title, array(&$this, 'custom_metabox' ), $post_type_name, $box_context, $box_priority, array( $fields ));
@@ -143,7 +155,7 @@ class TCP_CustomPostType {
     }
     
     // Display custom metabox on custom post page
-    private function custom_metabox( $post, $data ) {
+    public function custom_metabox( $post, $data ) {
         global $post;
         
         wp_nonce_field( plugin_basename( __FILE__ ), 'custom_post_type' );
@@ -151,17 +163,15 @@ class TCP_CustomPostType {
         // All field arguments
         $custom_fields = $data['args'][0];
         
-        // Get previously saved values
-        $post_meta = get_post_custom( $post->ID );
-        
         if( empty( $custom_fields ) ) {
             //fail silently
             return;
         }    
+        
         foreach( $custom_fields as $label => $args ) {
             $field_id_name  = slugify( $data['id'] )  . '_' . slugify( $label );
-            $field_type = !empty($args['type']) ? $args['type'] : 'text';
-            $field_val = $post_meta[$field_id_name][0];
+            $field_type = $args['type'];
+            $field_val = get_post_meta($post->ID, $field_id_name, true);
             
             // Choose display based on field type
             switch( $field_type ) {
@@ -207,46 +217,58 @@ class TCP_CustomPostType {
                     $iterator = 0;
                     foreach( $args['options'] as $key => $option_label ){
                         $iterator++;
-                        $options_markup .= sprintf( '<label for="%1$s_%6$s"><input id="%1$s_%6$s" name="%1$s[]" type="%2$s" value="%3$s" %4$s /> %5$s</label><br/>', $arguments['uid'], $arguments['type'], $key, checked( $value, $key, false ), $label, $iterator );
+                        $options_markup .= sprintf( '<label for="%1$s_%6$s"><input id="%1$s_%6$s" name="%1$s[]" type="%2$s" value="%3$s" %4$s /> %5$s</label><br/>', $field_id_name, $args['type'], $key, checked( $value, $key, false ), $option_label, $iterator );
                     }
                     printf( '<fieldset>%s</fieldset>', $options_markup );
                     break;
             }
-        }
+            if( $helper = $args['helper'] ){
+                printf( '<p class="description">%s</p>', $helper ); 
+            }
+        } // End foreach
     }        
     
     public function save() {
-        // Need the post type name again
-            $post_type_name = $this->slug;
- 
-            add_action( 'save_post',
-                function() use( $post_type_name ) {
-                // Deny the WordPress autosave function
-                if( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) return;
-
-                if ( ! wp_verify_nonce( $_POST['custom_post_type'], plugin_basename(__FILE__) ) ) return;
-     
-                global $post;
-         
-                if( isset( $_POST ) && isset( $post->ID ) && get_post_type( $post->ID ) == $post_type_name )
-                {
-                    global $custom_fields;
-             
-                    // Loop through each meta box
-                    foreach( $custom_fields as $title => $fields )
-                    {
-                        // Loop through all fields
-                        foreach( $fields as $label => $type )
-                        {
-                            $field_id_name  = strtolower( str_replace( ' ', '_', $title ) ) . '_' . strtolower( str_replace( ' ', '_', $label ) );
-                     
-                            update_post_meta( $post->ID, $field_id_name, $_POST['custom_meta'][$field_id_name] );
-                        }
-             
+        $post_type_name = $this->slug;
+        $obj_copy = &$this;
+        add_action( 'save_post', function($post_id, $post) use( $post_type_name, $obj_copy ) {
+            /* Error checking--prevent intentionally or accidentally saving
+             * custom post type meta-data
+             */
+            // If we haven't posted from form with nonce set, do nothing
+            if ( !isset( $_POST['custom_post_type'] ) ) {
+                return $post_id;
+            }
+            // Don't include form fields in wordpress autosave
+            if ( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) {
+                return $post_id;
+            }
+            // If nonce field doesn't originate from this post
+            if ( ! wp_verify_nonce( $_POST['custom_post_type'], plugin_basename(__FILE__) ) ) {
+                return $post_id;
+            }
+            // Hopefully they aren't in the edit post screen to begin with, but prevent forged
+            // forms from users without appropriate capabilities
+            if ( !current_user_can( 'edit_post', $post->ID ) ) {
+                return $post_id;
+            }
+            $post_type_fields = $obj_copy->fields;
+            // Loop through all meta-boxes and all meta-box fields
+            foreach( $post_type_fields as $title => $fields ) {
+                foreach( $fields as $label => $args ) {
+                    $field_id_name  = slugify( $title ) . '_' . slugify( $label );
+                    $old_value = get_post_meta($post_id, $field_id_name, true);
+                    $new_value = $_POST[$field_id_name];
+                    // If the value has been created or changed
+                    if ($new_value && $new_value != $old_value) {
+                        update_post_meta($post_id, $field_id_name, $new_value);
+                    } elseif ('' == $new_value && $old_value) {
+                        // If value has been deleted
+                        delete_post_meta($post_id, $field_id_name, $old_value);
                     }
                 }
             }
-        );
+        }, 1, 2);
     }
 }
 
