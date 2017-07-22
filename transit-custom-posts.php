@@ -8,9 +8,16 @@ License: GPL2
 */
 
 // Set up admin settings page
+require_once('settings-page.php');
 
 // For each setting, check if selected and add desired custom post types
 
 require_once( plugin_dir_path( __FILE__ ) . 'cpts/custom-post-type.php');
-$alert = new TCP_CustomPostType( 'Alert', array('menu_icon' => 'dashicons-warning') );
 
+$alert = new TCP_CustomPostType( 'Alert', array('menu_icon' => 'dashicons-warning') );
+$alert->add_meta_box('Alert Fields', array(
+    'Affected Routes' => array(
+        'helper' => 'comma-separated route short names',
+        'placeholder' => '1,2A,etc',
+    ),
+));
