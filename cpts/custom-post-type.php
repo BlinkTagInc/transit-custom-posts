@@ -5,14 +5,14 @@
  */
 
 class TCP_CustomPostType {
-    public $slug;
-    public $args;
-    public $labels;
-    public $fields;
+    protected $slug;
+    protected $args;
+    protected $labels;
+    protected $fields;
     
     /* Create new custom post type with optional $args and $labels */
-    public function __construct( $name, $args = array(), $labels = array() ) {
-        $this->slug = slugify( $name );
+    protected function __construct( $name, $args = array(), $labels = array() ) {
+        $this->slug = $this->slugify( $name );
         $this->args = $args;
         $this->labels = $labels;
         $this->fields = array();
@@ -58,7 +58,7 @@ class TCP_CustomPostType {
         register_post_type( $this->slug, $args ); 
     }
     
-    public function add_taxonomy( $name, $args = array(), $labels = array() ) {
+    protected function add_taxonomy( $name, $args = array(), $labels = array() ) {
         if( empty( $name ) ) {
             // TODO add an error msg? 
             // Fail silently
@@ -68,7 +68,7 @@ class TCP_CustomPostType {
         $post_type_name = $this->slug;
 
         // Taxonomy properties
-        $taxonomy_name      = slugify( $name );
+        $taxonomy_name      = $this->slugify( $name );
         $taxonomy_labels    = $labels;
         $taxonomy_args      = $args;
 
@@ -121,7 +121,7 @@ class TCP_CustomPostType {
     }
     
     /* Add a metabox to the custom post type page */
-    public function add_meta_box( $title, $fields = array(), $context = 'normal', $priority = 'default') {
+    protected function add_meta_box( $title, $fields = array(), $context = 'normal', $priority = 'default') {
         if( empty( $title ) ) {
             //fail silently
             return;
@@ -130,7 +130,7 @@ class TCP_CustomPostType {
         $post_type_name = $this->slug;
 
         // Meta variables
-        $box_id         = slugify( $title );
+        $box_id         = $this->slugify( $title );
         $box_title      = $title;
         $box_context    = $context;
         $box_priority   = $priority;
@@ -141,6 +141,8 @@ class TCP_CustomPostType {
                 'type'          => 'text',
                 'classes'       => 'widefat',
                 'helper'        => '',
+				'default'		=> '',
+				'options'		=> 'false',
             ),
             $args
             );
@@ -169,9 +171,12 @@ class TCP_CustomPostType {
         }    
         
         foreach( $custom_fields as $label => $args ) {
-            $field_id_name  = slugify( $data['id'] )  . '_' . slugify( $label );
+            $field_id_name  = $this->slugify( $data['id'] )  . '_' . $this->slugify( $label );
             $field_type = $args['type'];
             $field_val = get_post_meta($post->ID, $field_id_name, true);
+			if (! $field_val ) {
+				$field_val = $args['default'];
+			}
             
             // Choose display based on field type
             switch( $field_type ) {
@@ -205,6 +210,18 @@ class TCP_CustomPostType {
                     }
                     printf( '<select name="%1$s" id="%1$s" %2$s>%3$s</select>', $field_id_name, $attributes, $options_markup );
                     break;
+					
+				case 'multiple_checkbox':
+					if (! empty ($arguments['options']) && is_array( $arguments['options'] ) ) {
+						$options_markup = '';
+						$iterator = 0;
+						foreach( $arguments['options'] as $key => $option_label){
+							$iterator++;
+							$options_markup .= sprintf( '<label for="%1$s_%5$s"><input id="%1$s_%5$s" name="%1$s[%2$s]" type="checkbox" value="%2$s" %3$s> %4$s</label><br/>', $field_id_name, $key, in_array($key, $value) ? 'checked' : '', $option_label, $iterator);
+						}
+						printf( '<fieldset>%s</fieldset>', $options_markup );
+					}
+					break;
                     
                 // Radio and checkbox
                 case 'radio':
@@ -228,7 +245,7 @@ class TCP_CustomPostType {
         } // End foreach
     }        
     
-    public function save() {
+    protected function save() {
         $post_type_name = $this->slug;
         $obj_copy = &$this;
         add_action( 'save_post', function($post_id, $post) use( $post_type_name, $obj_copy ) {
@@ -256,7 +273,7 @@ class TCP_CustomPostType {
             // Loop through all meta-boxes and all meta-box fields
             foreach( $post_type_fields as $title => $fields ) {
                 foreach( $fields as $label => $args ) {
-                    $field_id_name  = slugify( $title ) . '_' . slugify( $label );
+                    $field_id_name  = $this->slugify( $title ) . '_' . $this->slugify( $label );
                     $old_value = get_post_meta($post_id, $field_id_name, true);
                     $new_value = $_POST[$field_id_name];
                     // If the value has been created or changed
@@ -270,8 +287,7 @@ class TCP_CustomPostType {
             }
         }, 1, 2);
     }
-}
-
-function slugify( $name_str ) {
-    return strtolower( str_replace( ' ', '_', $name_str ) );
+	protected function slugify( $name_str ) {
+	    return strtolower( str_replace( ' ', '_', $name_str ) );
+	}
 }
