@@ -21,6 +21,8 @@ class TCP_CustomPostType {
             add_action( 'init', array(&$this, 'register_post_type' ) );
         }
         $this->save();
+		
+		add_action( 'widgets_init', array(&$this, 'register_widgets') );
     }
     
     /* Register a new custom post type */
@@ -49,10 +51,9 @@ class TCP_CustomPostType {
             'label'             => $plural,
             'labels'            => $labels,
             'public'            => true,
-            'show_ui'           => true,
             'supports'          => array( 'title', 'editor' ),
-            'show_in_nav_menus' => true,
             '_builtin'          => false,
+			
         ), $this->args);
         
         register_post_type( $this->slug, $args ); 
@@ -142,7 +143,7 @@ class TCP_CustomPostType {
                 'classes'       => 'widefat',
                 'helper'        => '',
 				'default'		=> '',
-				'options'		=> 'false',
+				'options'		=> false,
             ),
             $args
             );
@@ -160,7 +161,7 @@ class TCP_CustomPostType {
     public function custom_metabox( $post, $data ) {
         global $post;
         
-        wp_nonce_field( plugin_basename( __FILE__ ), 'custom_post_type' );
+        wp_nonce_field( plugin_basename( __FILE__ ), $this->slug );
         
         // All field arguments
         $custom_fields = $data['args'][0];
@@ -171,7 +172,7 @@ class TCP_CustomPostType {
         }    
         
         foreach( $custom_fields as $label => $args ) {
-            $field_id_name  = $this->slugify( $data['id'] )  . '_' . $this->slugify( $label );
+            $field_id_name  = $this->slugify( $label );
             $field_type = $args['type'];
             $field_val = get_post_meta($post->ID, $field_id_name, true);
 			if (! $field_val ) {
@@ -184,6 +185,7 @@ class TCP_CustomPostType {
                 case 'text':
                 case 'number':
                 case 'email':
+				case 'date':
                     printf( '<label for="%1$s">%2$s</label>', $field_id_name, $label );
                     printf( '<input name="%1$s" id="%1$s" type="%2$s" placeholder="%3$s" value="%4$s" class="%5$s"/>', $field_id_name, $field_type, $args['placeholder'], esc_attr($field_val), $args['classes'] );
                     break;
@@ -212,12 +214,12 @@ class TCP_CustomPostType {
                     break;
 					
 				case 'multiple_checkbox':
-					if (! empty ($arguments['options']) && is_array( $arguments['options'] ) ) {
+					if (! empty ($args['options']) && is_array( $args['options'] ) ) {
 						$options_markup = '';
 						$iterator = 0;
-						foreach( $arguments['options'] as $key => $option_label){
+						foreach( $args['options'] as $key => $option_label){
 							$iterator++;
-							$options_markup .= sprintf( '<label for="%1$s_%5$s"><input id="%1$s_%5$s" name="%1$s[%2$s]" type="checkbox" value="%2$s" %3$s> %4$s</label><br/>', $field_id_name, $key, in_array($key, $value) ? 'checked' : '', $option_label, $iterator);
+							$options_markup .= sprintf( '<label for="%1$s_%5$s"><input id="%1$s_%5$s" name="%1$s[%2$s]" type="checkbox" value="%2$s" %3$s> %4$s</label><br/>', $field_id_name, $key, in_array($key, $field_val) ? 'checked' : '', $option_label, $iterator);
 						}
 						printf( '<fieldset>%s</fieldset>', $options_markup );
 					}
@@ -238,6 +240,11 @@ class TCP_CustomPostType {
                     }
                     printf( '<fieldset>%s</fieldset>', $options_markup );
                     break;
+					
+				case 'file':
+					printf( '<label for="%1$s">%2$s</label>', $field_id_name, $label );
+					printf( '<input name="%1$s" id="%1$s" type="%2$s"  value="%3$s" class="%4$s"/>', $field_id_name, $field_type, esc_attr($field_val), $args['classes'] );
+					break;
             }
             if( $helper = $args['helper'] ){
                 printf( '<p class="description">%s</p>', $helper ); 
@@ -253,7 +260,7 @@ class TCP_CustomPostType {
              * custom post type meta-data
              */
             // If we haven't posted from form with nonce set, do nothing
-            if ( !isset( $_POST['custom_post_type'] ) ) {
+            if ( !isset( $_POST[$post_type_name] ) ) {
                 return $post_id;
             }
             // Don't include form fields in wordpress autosave
@@ -261,7 +268,7 @@ class TCP_CustomPostType {
                 return $post_id;
             }
             // If nonce field doesn't originate from this post
-            if ( ! wp_verify_nonce( $_POST['custom_post_type'], plugin_basename(__FILE__) ) ) {
+            if ( ! wp_verify_nonce( $_POST[$post_type_name], plugin_basename(__FILE__) ) ) {
                 return $post_id;
             }
             // Hopefully they aren't in the edit post screen to begin with, but prevent forged
@@ -273,20 +280,30 @@ class TCP_CustomPostType {
             // Loop through all meta-boxes and all meta-box fields
             foreach( $post_type_fields as $title => $fields ) {
                 foreach( $fields as $label => $args ) {
-                    $field_id_name  = $this->slugify( $title ) . '_' . $this->slugify( $label );
-                    $old_value = get_post_meta($post_id, $field_id_name, true);
-                    $new_value = $_POST[$field_id_name];
-                    // If the value has been created or changed
-                    if ($new_value && $new_value != $old_value) {
-                        update_post_meta($post_id, $field_id_name, $new_value);
-                    } elseif ('' == $new_value && $old_value) {
-                        // If value has been deleted
-                        delete_post_meta($post_id, $field_id_name, $old_value);
-                    }
+                    $field_id_name  = $this->slugify( $label );
+					if ( $args['type'] == "file" ) {
+						var_dump($_FILES);
+					} else {
+	                    $old_value = get_post_meta($post_id, $field_id_name, true);
+	                    $new_value = $_POST[$field_id_name];
+	                    // If the value has been created or changed
+	                    if ($new_value && $new_value != $old_value) {
+	                        update_post_meta($post_id, $field_id_name, $new_value);
+	                    } elseif ('' == $new_value && $old_value) {
+	                        // If value has been deleted
+	                        delete_post_meta($post_id, $field_id_name, $old_value);
+	                    }
+					}
                 }
             }
         }, 1, 2);
     }
+	
+	public function register_widgets() {
+		// Override in child in order to add widgets
+		// Do nothing.
+	}
+	
 	protected function slugify( $name_str ) {
 	    return strtolower( str_replace( ' ', '_', $name_str ) );
 	}

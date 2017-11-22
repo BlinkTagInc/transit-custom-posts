@@ -2,6 +2,7 @@
 /*
  * Creates the plugin settings page using Wordpress settings API
  */
+require_once('gtfs-update.php');
 
 function tcp_settings_pages() {
     // Root menu for Plugin
@@ -70,18 +71,74 @@ function tcp_setup_fields() {
 			'uid' 		=> 'tcp_route_display',
 			'label' 	=> 'Route Display',	
 			'section'	=> 'tcp_routes_options',
+			'type'		=> 'text',
+			'options'	=> false,
+			'placeholder' => '',
+			'helper'	=> '',
+			'supplemental' => 'How to display route names on this site. Available keywords include %short_name%, %long_name%, and %route_circle%. This format can be overwritten by individual routes within their edit screens.',
+			'default' => '%short_name%: %long_name%',
+			'settings' => 'tcp_cpt_fields',		
+			'classes' => 'regular-text',					
+		),
+		array(
+			'uid' 		=> 'tcp_route_sortorder',
+			'label' 	=> 'Sort Order',	
+			'section'	=> 'tcp_routes_options',
 			'type'		=> 'select',
 			'options'	=> array(
-				'long_name' => 'Long Name',
-				'short_name' => 'Short Name',
-				'circle_name' => 'Route Circle + Name',
+				'route_sort_order' => 'Route Sort Order',
+				'route_short_name' => 'Short Name',
+				'route_long_name' => 'Long Name',
 			),
 			'placeholder' => '',
 			'helper'	=> '',
 			'supplemental' => '',
-			'default' => 'long_name',
+			'default' => 'sort_order',
 			'settings' => 'tcp_cpt_fields',		
 			'classes' => '',					
+		),
+		array(
+			'uid' 		=> 'tcp_alert_custom_display_affected',
+			'label' 	=> 'Advanced: Custom display affected routes',	
+			'section'	=> 'tcp_alerts_options',
+			'type'		=> 'checkbox',
+			'options'	=> false,
+			'placeholder' => '',
+			'helper'	=> 'Check only if you hook into the "tcp_display_affected" filter in your theme.',
+			'supplemental' => '',
+			'default' => false,
+			'settings' => 'tcp_cpt_fields',		
+			'classes' => '',					
+		),
+		array(
+			'uid'		=> 'tcp_board_fields',
+			'label'		=> 'Board Meeting Fields',
+			'section'	=> 'tcp_board_options',
+			'type'		=> 'multiple_checkbox',
+			'options'	=> array(
+				'tcp_minutes_field'		=> 'Minutes PDF',
+				'tcp_agenda_field'		=> 'Agenda PDF',
+				'tcp_location_field'	=> 'Location Field',
+			),
+			'placeholder'	=> '',
+			'helper'		=> '',
+			'supplemental'	=> '',
+			'default'		=> array(),
+			'settings'		=> 'tcp_cpt_fields',
+			'classes'		=> '',
+		),
+		array(
+			'uid' 		=> 'tcp_board_posts_per_page',
+			'label' 	=> 'Board meetings page shows at most',	
+			'section'	=> 'tcp_board_options',
+			'type'		=> 'number',
+			'options'	=> false,
+			'placeholder' => '',
+			'helper'	=> 'meetings per page',
+			'supplemental' => '',
+			'default' => 20,
+			'settings' => 'tcp_cpt_fields',		
+			'classes' => 'small-text',					
 		),
 		array(
 			'uid'			=> 'tcp_gtfs_url',
@@ -134,6 +191,9 @@ switch( $arguments['type'] ){
                     printf( '<select name="%1$s" id="%1$s" %2$s>%3$s</select>', $arguments['uid'], $attributes, $options_markup );
                 }
                 break;
+			case 'checkbox':
+	            printf( '<input name="%1$s" id="%1$s" type="%2$s" placeholder="%3$s" %4$s class="%5$s"/>', $arguments['uid'], $arguments['type'], $arguments['placeholder'], checked( $value, 'on', false ), $arguments['classes'] );
+	            break;
 			case 'multiple_checkbox':
 				if (! empty ($arguments['options']) && is_array( $arguments['options'] ) ) {
 					$options_markup = '';
@@ -146,7 +206,6 @@ switch( $arguments['type'] ){
 				}
 				break;
             case 'radio':
-            case 'checkbox':
                 if( ! empty ( $arguments['options'] ) && is_array( $arguments['options'] ) ){
                     $options_markup = '';
                     $iterator = 0;
@@ -191,13 +250,21 @@ function tcp_gtfs_settings_content() {
 	<div class="wrap">
 		<h1>GTFS Feed and Options</h1>
 		<?php settings_errors(); ?>
-		<form method="post" action="options.php">
-			<?php
-			settings_fields( 'tcp_gtfs_fields' );
-			do_settings_sections( 'tcp_gtfs_fields' );
-			submit_button();
-			?>
-		</form>
+		<div id="welcome-panel" class="welcome-panel">
+			<div class="welcome-panel-content">
+				<p>Your GTFS feed is used to create routes, update route fields,
+					and link routes and timetables. In order to automatically generate
+					timetables, please download GTFS-to-HTML.
+				<form method="post" action="options.php">
+					<?php
+					settings_fields( 'tcp_gtfs_fields' );
+					do_settings_sections( 'tcp_gtfs_fields' );
+					submit_button();
+					?>
+				</form>
+			</div>
+		</div>
+		<?php the_gtfs_update_form(); ?>
 	</div>
 	<?php
 }
