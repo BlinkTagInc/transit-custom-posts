@@ -18,31 +18,31 @@ Click GTFS Update and routes will automatically update. You will see a status co
 
 ### Status Codes
 
-#### Insufficient permissions
+##### Insufficient permissions
 
 Error: performing GTFS Update requires permissions equivalent to being able to update the core Wordpress--on most sites this may be editor or administrator privileges. 
 
-#### Please confirm you have backed up the site
+##### Please confirm you have backed up the site
 
 Error: GTFS update will not run unless you have checked the box confirming site backup.
 
-#### Routes not activated
+##### Routes not activated
 
 Error: The plugin cannot update routes if they do not exist. Navigate to the the Custom Post Types setttings menu and activate 'Routes' to continue.
 
-#### Error downloading feed
+##### Error downloading feed
 
 Error: The plugin could not download the feed from the supplied URL. Check to make sure the URL is correct, and make sure you press 'Save Changes' before attempting an update. This error could also appear if `routes.txt` is not correctly formatted. 
 
-#### No routes.txt present
+##### No routes.txt present
 
 Error: GTFS Update relies on the `routes.txt` file for necessary information. Check your feed to make sure it exists.
 
-#### GTFS Update Success
+##### GTFS Update Success
 
 Success: Files and feed present and correctly formatted. Check routes to make sure information is correct
 
-#### GTFS Update Success, timetables not updated
+##### GTFS Update Success, timetables not updated
 
 Success: However, `timetables.txt` not present; assumed to be intentional. Upload the file to update timetables as well.
 
