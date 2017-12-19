@@ -51,7 +51,7 @@ An alert widget makes it easy to drag-and-drop alerts into any type of Wordpress
 
 ## Timetables
 
-We recommend generating timetables with (GTFS-to-HTML)[https://github.com/BlinkTagInc/gtfs-to-html]; generating the timetable HTML is beyond the scope of this plugin. Both GTFS-to-HTML and this plugin rely on an optional GTFS file: `timetables.txt`. More information can be found in [GTFS update](gtfs-update.md).
+We recommend generating timetables with [GTFS-to-HTML](https://github.com/BlinkTagInc/gtfs-to-html); generating the timetable HTML is beyond the scope of this plugin. Both GTFS-to-HTML and this plugin rely on an optional GTFS file: `timetables.txt`. More information can be found in [GTFS update](gtfs-update.md).
 
 You can still use the timetable custom posts without the `timetables.txt` file or using GTFS-to-HTML, however, you will manually need to enter at least:
 
@@ -66,3 +66,6 @@ In addition, you'll need to supply either the timetable HTML or an image as the 
 ## Board Meetings
 
 The meetings custom post type is still under discussion; it's commonly used by many transit agencies but doesn't actually interact with the GTFS in any way. 
+
+
+[Back to Overview](index.md)
