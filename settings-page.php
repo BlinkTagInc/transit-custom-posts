@@ -30,14 +30,6 @@ function tcp_settings_pages() {
     $menu_slug = 'tcp_gtfs_settings';
     $callback = 'tcp_gtfs_settings_content';
     add_submenu_page($parent_slug, $page_title, $menu_title, $capability, $menu_slug, $callback);
-    
-    $parent_slug = 'tcp_settings_page';
-    $page_title = 'Usage Guide';
-    $menu_title = 'Usage Guide';
-    $capability = 'manage_options';
-    $menu_slug = 'tcp_usage_guide';
-    $callback = 'tcp_usage_guide_content';
-    add_submenu_page($parent_slug, $page_title, $menu_title, $capability, $menu_slug, $callback);   
 }
 add_action( 'admin_menu', 'tcp_settings_pages');
 
@@ -62,7 +54,7 @@ function tcp_setup_fields() {
 			),
 			'placeholder'	=> '',
 			'helper'		=> '',
-			'supplemental'	=> 'See the usage guide for more information.',
+			'supplemental'	=> 'See <a href="https://trilliumtransit.github.io/transit-custom-posts/">plugin website</a> for more information',
 			'default'		=> array(),
 			'settings'		=> 'tcp_cpt_fields',
 			'classes'		=> '',
@@ -265,21 +257,6 @@ function tcp_gtfs_settings_content() {
 			</div>
 		</div>
 		<?php the_gtfs_update_form(); ?>
-	</div>
-	<?php
-}
-
-function tcp_usage_guide_content() {
-	?>
-	<div class="wrap">
-		<h1>Transit Custom Posts Usage Guide</h1>
-		<p>Thank you for downloading Transit Custom Posts. For a complete working starter theme, download the TransitPress theme. Otherwise, you will need to customize your theme (or a child theme) to utilize most of this plugin's features.</p>
-		<h2>Getting Started</h2>
-		<p>Lorem ipsum, etc</p>
-		<h2>GTFS Update</h2>
-		<p>Beep Boop</p>
-		<h2>Plugin Functions</h2>
-		<p>More stuff</p>
 	</div>
 	<?php
 }
