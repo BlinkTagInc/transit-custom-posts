@@ -4,6 +4,8 @@ The Transit Custom Posts plugin makes it easy to create public transit sites tha
 
 This plugin is based on years of experience building transit websites, incorporating solutions to many common problems and features proven useful to transit agencies with widely varying needs and services.
 
+See a basic working example site of [Transit Custom Posts with the Transit Base Template](https://demoplugin.wpengine.com/)
+
 ### Guide
 
 * [Custom Post Types](custom-posts.md)
