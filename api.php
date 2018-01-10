@@ -445,6 +445,9 @@ function the_timetables( $args = array() ) {
 	$timetable_args = array(
 		'post_type'			=> 'timetable',
 		'posts_per_page'	=> -1,
+		'orderby'			=> 'meta_value_num',
+		'meta_key'			=> 'timetable_id',
+		'order'				=> 'ASC',
 		'meta_query'		=> array(
 			'relation'	=> 'AND',
 			array(
