@@ -263,13 +263,13 @@ function the_route_description() {
 *     @type int "number_posts" Number of alerts to show.
 *         Default: -1
 * }
+*
+* @return int Number of alerts or false
 */
 function tcp_do_alerts( $args = array() ) {
 
 	if ( !post_type_exists( 'alert' ) ) {
-
-		// Fail silently.
-		return;
+		return false;
 	}
 
 	$defaults = array(
@@ -358,7 +358,7 @@ function tcp_do_alerts( $args = array() ) {
 
 			// Retrieve formatted date text for effective date(s)
 			$date_text = tcp_get_alert_dates( get_the_ID() );
-			
+
 			$affected_text = $args['show_affected'] ? $args['affected_text'] . tcp_get_affected( get_the_ID(), $args['sep_affected'] ) : '';
 
 			echo '<div class="tcp_panel">';
@@ -374,8 +374,9 @@ function tcp_do_alerts( $args = array() ) {
 		echo '</div></div>';
 
 		wp_reset_postdata();
+		return $alert_query->post_count;
 	}
-	return;
+	return false;
 }
 
 /**
