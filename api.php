@@ -244,13 +244,30 @@ function get_route_circle( $post_id = NULL, $size = "medium" ) {
 *
 * @global WP_Post $post
 * @see get_post_meta()
+*
+* @param array $args {
+*     Optional. An array of arguments.
+*
+*     @type string "before" Text or HTML displayed before route description.
+*         Default: '<div class="tcp_route_description">'
+*     @type string "after" Text or HTML displayed after route description.
+*         Default: '</div>'
 */
-function the_route_description() {
+function the_route_description($args = array()) {
 	global $post;
 	if ( !post_type_exists( 'route' ) ) {
 		return;
 	}
-	echo get_post_meta( $post->ID, 'route_desc', true );
+
+	$defaults = array(
+		'before'		=> '<div class="tcp_route_description">',
+		'after'			=> '</div>',
+	);
+	$args = wp_parse_args( $args, $defaults );
+
+	$description = get_post_meta( $post->ID, 'route_description', true );
+
+	echo $args['before'] . $description . $args['after'];
 }
 
 /**
