@@ -3,6 +3,27 @@
  * Public API functions
  */
 
+ /**
+ * Returns a sorted array of route objects.
+ */
+ function tcp_get_routes() {
+ 	if ( !post_type_exists( 'route') ) {
+ 		// Fail silently
+ 		return;
+ 	}
+
+ 	// route sort
+ 	$order = get_option('tcp_route_sortorder');
+ 	$orderby = $order == 'route_sort_order' ? array( 'meta_value_num' => 'ASC', 'title' => 'ASC') : 'title';
+ 	$route_args = array(
+ 		'post_type'		=> 'route',
+ 		'numberposts'	=> -1,
+ 		'meta_key'			=> $order,
+ 		'orderby'			=> $orderby,
+ 	);
+ 	return get_posts( $route_args );
+}
+
 /**
 * Outputs all route names with formatting.
 *
@@ -40,16 +61,7 @@ function tcp_list_routes( $args = array() ) {
 	);
 	$args = wp_parse_args( $args, $defaults );
 
-	// route sort
-	$order = get_option('tcp_route_sortorder');
-	$orderby = $order == 'route_sort_order' ? array( 'meta_value_num' => 'ASC', 'title' => 'ASC') : 'title';
-	$route_args = array(
-		'post_type'		=> 'route',
-		'numberposts'	=> -1,
-		'meta_key'			=> $order,
-		'orderby'			=> $orderby,
-	);
-	$route_posts = get_posts( $route_args );
+	$route_posts = tcp_get_routes();
 	$rcolor = '';
 	$routes = array();
 
