@@ -564,6 +564,10 @@ function tcp_route_name_from_tag( $route_tag ) {
 	$r_post = get_page_by_path( $route_tag, OBJECT, 'route' );
 
 	if ( empty( $r_post ) ) {
+		
+		if ( $route_tag == 'all' ) {
+     			return 'All Routes';
+    		}
 
 		// Page doesn't exist or filter was applied
 		return $route_tag;
